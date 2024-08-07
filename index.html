@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Firebase Data Display</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f9;
+                margin: 0;
+                padding: 10px;
+                color: #333;
+            }
+            .card {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px;
+                font-size: 14px;
+                text-align: center;
+                display: inline-block;
+                width: 300px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                transition:
+                    transform 0.3s ease,
+                    box-shadow 0.3s ease;
+                animation: fadeIn 1s ease-out;
+            }
+            .card:hover {
+                transform: scale(1.05);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            }
+            .card img {
+                max-width: 100%;
+                height: auto;
+                border-radius: 8px;
+                transition: opacity 0.3s ease;
+            }
+            .small-images {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 8px;
+            }
+            .small-images img {
+                width: 48%;
+                height: auto;
+                border-radius: 8px;
+                transition: transform 0.3s ease;
+            }
+            .small-images img:hover {
+                transform: scale(1.05);
+            }
+            .hidden {
+                display: none;
+            }
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            h1 {
+                color: #444;
+                text-align: center;
+            }
+            button {
+                display: block;
+                margin: 20px auto;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                background-color: #007bff;
+                color: #fff;
+                font-size: 16px;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+            button:hover {
+                background-color: #0056b3;
+            }
+        </style>
+        <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-database.js"></script>
+    </head>
+    <body>
+        <div id="path-view">
+            <h1>CUSTOMER ORDERS</h1>
+            <div id="data-list"></div>
+        </div>
+        <div id="content-view" class="hidden">
+            <h1>ORDERS</h1>
+            <div id="content-list"></div>
+            <button onclick="showPaths()">Back to List</button>
+        </div>
+
+        <script>
+            // Firebase configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyCG7fRw21apfTA36HKl5LbVWiHI_8zk12A",
+                authDomain: "signup-bfcf8.firebaseapp.com",
+                databaseURL: "https://signup-bfcf8-default-rtdb.firebaseio.com",
+                projectId: "signup-bfcf8",
+                storageBucket: "signup-bfcf8.appspot.com",
+                messagingSenderId: "862509936181",
+                appId: "1:862509936181:web:6a16490f27a97bac7bcb7c"
+            };
+
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.database();
+
+            // Function to show paths view
+            function showPaths() {
+                document.getElementById("path-view").classList.remove("hidden");
+                document.getElementById("content-view").classList.add("hidden");
+                loadPaths();
+            }
+
+            // Function to show content view
+            function showContent(path) {
+                document.getElementById("path-view").classList.add("hidden");
+                document
+                    .getElementById("content-view")
+                    .classList.remove("hidden");
+                loadContent(path);
+            }
+
+            // Load paths from Firebase
+            function loadPaths() {
+                db.ref("CHECKOUT")
+                    .once("value")
+                    .then(snapshot => {
+                        const dataList = document.getElementById("data-list");
+                        dataList.innerHTML = "";
+                        snapshot.forEach(childSnapshot => {
+                            const path = childSnapshot.key;
+                            let additionalInfo = "";
+                            let imagesHtml = "";
+                            let username = "Unknown User";
+                            const images = [];
+
+                            childSnapshot.forEach(grandchildSnapshot => {
+                                const childData = grandchildSnapshot.val();
+                                additionalInfo = `
+                                <p>Contact: ${childData.contact || "N/A"}</p>
+                                <p>Address: ${childData.address || "N/A"}</p>
+                                <p>City: ${childData.city || "N/A"}</p>
+                                <p>Birthday: ${childData.birthday || "N/A"}</p>
+                                <p>Email: ${childData.email || "N/A"}</p>
+                                <p>Account: ${childData.account || "N/A"}</p>
+                            `;
+                                if (childData.username) {
+                                    username = childData.username;
+                                }
+                                if (childData.image1) {
+                                    images.push(childData.image1);
+                                }
+                            });
+
+                            if (images.length > 0) {
+                                imagesHtml = `
+                                <div class="small-images">
+                                    <img src="${images[0]}" alt="Image 1">
+                                    ${
+                                        images.length > 1
+                                            ? `<img src="${images[1]}" alt="Image 2">`
+                                            : ""
+                                    }
+                                </div>
+                            `;
+                            }
+
+                            const card = document.createElement("div");
+                            card.className = "card";
+                            card.innerHTML = `
+                            <h3>${username}</h3>
+                            ${imagesHtml}
+                            ${additionalInfo}
+                        `;
+                            card.onclick = () => showContent(path);
+                            dataList.appendChild(card);
+                        });
+                    })
+                    .catch(error => {
+                        console.error("Error fetching data:", error);
+                    });
+            }
+
+            // Load content for a specific path from Firebase
+            function loadContent(path) {
+                db.ref(`CHECKOUT/${path}`)
+                    .once("value")
+                    .then(snapshot => {
+                        const contentList =
+                            document.getElementById("content-list");
+                        contentList.innerHTML = "";
+                        const data = snapshot.val();
+                        if (data) {
+                            Object.keys(data).forEach(key => {
+                                const item = data[key];
+                                const card = document.createElement("div");
+                                card.className = "card";
+
+                                // Create elements for product details
+                                const image = document.createElement("img");
+                                const price = document.createElement("p");
+                                const seller = document.createElement("p");
+                                const id = document.createElement("p");
+                                const description = document.createElement("p");
+                                const additionalInfo =
+                                    document.createElement("p");
+                                const size = document.createElement("p");
+                                const color = document.createElement("p");
+
+                                // Set content for each element
+                                if (item.image1) {
+                                    image.src = item.image1;
+                                } else {
+                                    image.src =
+                                        "https://via.placeholder.com/300"; // Default image
+                                }
+                                price.textContent = `Price: Ghc${
+                                    item.price || "N/A"
+                                }`;
+                                seller.textContent = `Seller: ${
+                                    item.seller || "N/A"
+                                }`;
+                                id.textContent = `ID: ${item.id || "N/A"}`;
+                                description.textContent = `Description: ${
+                                    item.description || "N/A"
+                                }`;
+                                additionalInfo.textContent = `Additional Info: ${
+                                    item.additionalInfo || "N/A"
+                                }`;
+                                size.textContent = `Size: ${
+                                    item.size || "N/A"
+                                }`;
+                                color.textContent = `Color: ${
+                                    item.color || "N/A"
+                                }`;
+
+                                // Append elements to card
+                                card.appendChild(image);
+                                card.appendChild(price);
+                                card.appendChild(seller);
+                                card.appendChild(id);
+                                card.appendChild(description);
+                                card.appendChild(additionalInfo);
+                                card.appendChild(size);
+                                card.appendChild(color);
+
+                                contentList.appendChild(card);
+                            });
+                        } else {
+                            contentList.textContent = "No content available.";
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching content:", error);
+                        document.getElementById("content-list").textContent =
+                            "Error loading content.";
+                    });
+            }
+
+            // Initialize the page view based on URL parameter
+            (function init() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const path = urlParams.get("path");
+                if (path) {
+                    showContent(path);
+                } else {
+                    showPaths();
+                }
+            })();
+        </script>
+    </body>
+</html>
